@@ -1,0 +1,96 @@
+/include/ "system-conf.dtsi"
+/ {
+
+	mdio0 {
+		compatible = "cdns,macb-mdio";
+		reg = <0x0 0xff0b0000 0x0 0x1000>;
+		clocks =  <&clk 45>, <&clk 45>, <&clk 49>;
+		clock-names = "pclk", "tx_clk", "hclk";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		phy0: ethernet-phy@3 {
+			reg = <3>;
+
+			txc-skew-ps = <1800>;
+			txen-skew-ps = <420>;
+
+			txd0-skew-ps = <420>;
+			txd1-skew-ps = <420>;
+			txd2-skew-ps = <420>;
+			txd3-skew-ps = <420>;
+
+			rxc-skew-ps = <900>;
+			rxdv-skew-ps = <420>;
+
+			rxd0-skew-ps = <420>;
+			rxd1-skew-ps = <420>;
+			rxd2-skew-ps = <420>;
+			rxd3-skew-ps = <420>;
+		};
+	};
+
+	mdio1 {
+		compatible = "cdns,macb-mdio";
+		reg = <0x0 0xff0c0000 0x0 0x1000>;
+		clocks =  <&clk 45>, <&clk 45>, <&clk 49>;
+		clock-names = "pclk", "tx_clk", "hclk";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		phy1: ethernet-phy@3 {
+			reg = <3>;
+
+			txc-skew-ps = <1800>;
+			txen-skew-ps = <420>;
+
+			txd0-skew-ps = <420>;
+			txd1-skew-ps = <420>;
+			txd2-skew-ps = <420>;
+			txd3-skew-ps = <420>;
+
+			rxc-skew-ps = <1860>;
+			rxdv-skew-ps = <420>;
+
+			rxd0-skew-ps = <0>;
+			rxd1-skew-ps = <0>;
+			rxd2-skew-ps = <0>;
+			rxd3-skew-ps = <0>;
+		};
+	};
+	video_m2m {
+		compatible = "xlnx,mem2mem";
+		dmas = <&m2m_ss_v_frmbuf_rd_0 0>, <&m2m_ss_v_frmbuf_wr_0 0>;
+		dma-names = "tx", "rx";
+	};
+};
+
+&gem0 {
+	status = "okay";
+	local-mac-address = [00 0a 35 00 02 90];
+	phy = <&phy0>;
+	phy-mode = "rgmii-id";
+	phy-handle = <&phy0>;
+};
+
+&gem3 {
+	status = "okay";
+	local-mac-address = [00 0a 35 00 02 91];
+	phy = <&phy1>;
+	phy-mode = "gmii-id";
+	phy-handle = <&phy1>;
+};
+
+&sdhci1 {
+	status = "okay";
+	no-1-8-v;	/* for 1.0 silicon */
+	wp-inverted;
+	xlnx,mio_bank = <1>;
+};
+
+&sdhci0 {
+	status = "okay";
+	no-1-8-v;	/* for 1.0 silicon */
+	non-removable;
+	disable-wp;
+	xlnx,mio_bank = <0>;
+	bus-width = <8>;
+};

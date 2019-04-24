@@ -1,0 +1,56 @@
+From 23f405e6bedb218988ec38dd769f7616c915afe0 Mon Sep 17 00:00:00 2001
+From: Chintan Vadaliya <chintanv@xilinx.com>
+Date: Mon, 3 Dec 2018 03:46:18 -0800
+Subject: [PATCH] Fix HEVC_MAIN_422 custom 422-8bits profiles.
+
+Signed-off-by: Arthur Vinchon <arthur.vinchon@allegrodvt.com>
+Signed-off-by: Chintan Vadaliya <chintanv@xilinx.com>
+---
+ lib_encode/IP_Utils.c | 24 ++++++------------------
+ 1 file changed, 6 insertions(+), 18 deletions(-)
+
+diff --git a/lib_encode/IP_Utils.c b/lib_encode/IP_Utils.c
+index 3ddee02..82687c9 100644
+--- a/lib_encode/IP_Utils.c
++++ b/lib_encode/IP_Utils.c
+@@ -115,18 +115,6 @@ static struct AL_t_RPS
+ 
+ 
+ /****************************************************************************/
+-static uint8_t getMax10BitConstraintFlag(int iBitDepth, AL_EChromaMode eChromaMode)
+-{
+-  return (iBitDepth == 8) || (eChromaMode != CHROMA_MONO); // MONO12 can be 10 or 12 bits
+-}
+-
+-/****************************************************************************/
+-static uint8_t getMax8BitConstraintFlag(int iBitDepth, AL_EChromaMode eChromaMode)
+-{
+-  return (iBitDepth == 8) && (eChromaMode != CHROMA_4_2_2); // Main 422 10 and Main 422 10 Intra can be 8 bits
+-}
+-
+-/****************************************************************************/
+ static void AL_sUpdateProfileTierLevel(AL_TProfilevel* pPTL, AL_TEncChanParam const* pChParam, bool profilePresentFlag, int iLayerId)
+ {
+   (void)iLayerId;
+@@ -153,12 +141,12 @@ static void AL_sUpdateProfileTierLevel(AL_TProfilevel* pPTL, AL_TEncChanParam co
+     if(pPTL->general_profile_idc >= AL_GET_PROFILE_IDC(AL_PROFILE_HEVC_RExt))
+     {
+       AL_EChromaMode eChromaMode = AL_GET_CHROMA_MODE(pChParam->ePicFormat);
+-      pPTL->general_max_12bit_constraint_flag = 1;
+-      pPTL->general_max_10bit_constraint_flag = getMax10BitConstraintFlag(iBitDepth, eChromaMode);
+-      pPTL->general_max_8bit_constraint_flag = getMax8BitConstraintFlag(iBitDepth, eChromaMode);
+-      pPTL->general_max_422chroma_constraint_flag = 1;
+-      pPTL->general_max_420chroma_constraint_flag = eChromaMode <= CHROMA_4_2_0;
+-      pPTL->general_max_monochrome_constraint_flag = eChromaMode == CHROMA_MONO;
++      pPTL->general_max_12bit_constraint_flag = (iBitDepth <= 12) ? 1 : 0;
++      pPTL->general_max_10bit_constraint_flag = (iBitDepth <= 10) ? 1 : 0;
++      pPTL->general_max_8bit_constraint_flag = (iBitDepth <= 8) ? 1 : 0;
++      pPTL->general_max_422chroma_constraint_flag = (eChromaMode <= CHROMA_4_2_2) ? 1 : 0;
++      pPTL->general_max_420chroma_constraint_flag = (eChromaMode <= CHROMA_4_2_0) ? 1 : 0;
++      pPTL->general_max_monochrome_constraint_flag = (eChromaMode == CHROMA_MONO) ? 1 : 0;
+       pPTL->general_intra_constraint_flag = AL_IS_INTRA_PROFILE(pChParam->eProfile);
+       pPTL->general_one_picture_only_constraint_flag = 0;
+       pPTL->general_lower_bit_rate_constraint_flag = 1;
+-- 
+2.7.4
+

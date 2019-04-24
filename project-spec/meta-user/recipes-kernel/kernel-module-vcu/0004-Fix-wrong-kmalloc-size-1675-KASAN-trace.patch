@@ -1,0 +1,26 @@
+From 11370aa8a985419358080ca39318660da41ce058 Mon Sep 17 00:00:00 2001
+From: Kevin Grandemange <kevin.grandemange@allegrodvt.com>
+Date: Mon, 15 Oct 2018 10:24:04 +0200
+Subject: [PATCH 4/4] Fix wrong kmalloc size (#1675 KASAN trace)
+
+Signed-off-by: Kevin Grandemange <kevin.grandemange@allegrodvt.com>
+---
+ common/mcu_interface.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/common/mcu_interface.c b/common/mcu_interface.c
+index 5275041..ebc8a23 100644
+--- a/common/mcu_interface.c
++++ b/common/mcu_interface.c
+@@ -28,7 +28,7 @@ int al5_mcu_interface_create(struct mcu_mailbox_interface **mcu,
+ 			     struct mcu_mailbox_config *config,
+ 			     void *mcu_interrupt_register)
+ {
+-	*mcu = devm_kmalloc(device, sizeof(*mcu), GFP_KERNEL);
++	*mcu = devm_kmalloc(device, sizeof(struct mcu_mailbox_interface), GFP_KERNEL);
+ 	if (!*mcu)
+ 		return -ENOMEM;
+ 
+-- 
+2.7.4
+

@@ -1,0 +1,32 @@
+From 119e866f916f6def4d6d4d7b0f48f2e33dc96da7 Mon Sep 17 00:00:00 2001
+From: Kevin Grandemange <kevin.grandemange@allegrodvt.com>
+Date: Mon, 15 Oct 2018 15:59:45 +0200
+Subject: [PATCH] Do not print errors for the OMX_EventPortSettingsChanged and
+ the OMX_EventBufferFlag as these are normal event for the omx component
+
+Signed-off-by: Kevin Grandemange <kevin.grandemange@allegrodvt.com>
+---
+ exe_omx/encoder/main.cpp | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/exe_omx/encoder/main.cpp b/exe_omx/encoder/main.cpp
+index 3209ed8..7a0ffa5 100644
+--- a/exe_omx/encoder/main.cpp
++++ b/exe_omx/encoder/main.cpp
+@@ -476,6 +476,13 @@ static OMX_ERRORTYPE onComponentEvent(OMX_HANDLETYPE hComponent, OMX_PTR pAppDat
+     LOGE("Comp %p : %s (%s)\n", hComponent, ToStringOMXEvent.at(eEvent), ToStringOMXError.at(cmd));
+     exit(1);
+   }
++  /* this event will be fired by the component but we have nothing special to do with them */
++  case OMX_EventBufferFlag: // fallthrough
++  case OMX_EventPortSettingsChanged:
++  {
++    LOGI("Comp %p : Got %s\n", hComponent, ToStringOMXEvent.at(eEvent));
++    break;
++  }
+   default:
+   {
+     LOGE("Comp %p : Unsupported %s\n", hComponent, ToStringOMXEvent.at(eEvent));
+-- 
+2.7.4
+

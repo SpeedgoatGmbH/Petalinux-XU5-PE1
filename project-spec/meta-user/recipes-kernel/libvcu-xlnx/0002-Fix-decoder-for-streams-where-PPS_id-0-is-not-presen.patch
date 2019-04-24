@@ -1,0 +1,242 @@
+From f4d16604733f7b071f9e1dc7d2aa396c008c4025 Mon Sep 17 00:00:00 2001
+From: Pascal EYMERY <pascal.eymery@allegrodvt.com>
+Date: Tue, 20 Nov 2018 15:10:23 +0100
+Subject: [PATCH 2/3] Fix decoder for streams where PPS_id 0 is not present.
+
+---
+ lib_decode/AvcDecoder.c       | 15 ++++++++++++---
+ lib_decode/HevcDecoder.c      | 15 +++++++++++----
+ lib_parsing/AvcParser.c       |  6 +++++-
+ lib_parsing/AvcParser.h       |  2 +-
+ lib_parsing/HevcParser.c      | 11 +++++++----
+ lib_parsing/HevcParser.h      |  2 +-
+ lib_parsing/SliceHdrParsing.c | 29 +++++++++++------------------
+ 7 files changed, 48 insertions(+), 32 deletions(-)
+
+diff --git a/lib_decode/AvcDecoder.c b/lib_decode/AvcDecoder.c
+index ff959f9..1d8d3ee 100644
+--- a/lib_decode/AvcDecoder.c
++++ b/lib_decode/AvcDecoder.c
+@@ -715,13 +715,22 @@ static bool isSliceData(AL_ENut nut)
+   }
+ }
+ 
+-static AL_PARSE_RESULT parsePPSandUpdateConcealment(AL_TAup* aup, AL_TRbspParser* rp, AL_TDecCtx* pCtx)
++/*****************************************************************************/
++static AL_PARSE_RESULT parsePPSandUpdateConcealment(AL_TAup* IAup, AL_TRbspParser* rp, AL_TDecCtx* pCtx)
+ {
+-  AL_PARSE_RESULT result = AL_AVC_ParsePPS(aup, rp);
++  uint16_t PpsId;
++  AL_PARSE_RESULT result = AL_AVC_ParsePPS(IAup, rp, &PpsId);
++
++  AL_TAvcAup* aup = &IAup->avcAup;
+ 
+-  if(!aup->avcAup.pPPS->bConceal)
++  if(!aup->pPPS[PpsId].bConceal)
++  {
+     pCtx->tConceal.bHasPPS = true;
+ 
++    if(pCtx->tConceal.iLastPPSId <= PpsId)
++      pCtx->tConceal.iLastPPSId = PpsId;
++  }
++
+   return result;
+ }
+ 
+diff --git a/lib_decode/HevcDecoder.c b/lib_decode/HevcDecoder.c
+index 1f578a1..a184480 100644
+--- a/lib_decode/HevcDecoder.c
++++ b/lib_decode/HevcDecoder.c
+@@ -852,14 +852,21 @@ static bool isSliceData(AL_ENut nut)
+   }
+ }
+ 
++/*****************************************************************************/
+ static AL_PARSE_RESULT parsePPSandUpdateConcealment(AL_TAup* IAup, AL_TRbspParser* rp, AL_TDecCtx* pCtx)
+ {
++  uint16_t PpsId;
++  AL_HEVC_ParsePPS(IAup, rp, &PpsId);
++
+   AL_THevcAup* aup = &IAup->hevcAup;
+-  uint8_t LastPicId;
+-  AL_HEVC_ParsePPS(IAup, rp, &LastPicId);
+ 
+-  if(!aup->pPPS[LastPicId].bConceal && pCtx->tConceal.iLastPPSId <= LastPicId)
+-    pCtx->tConceal.iLastPPSId = LastPicId;
++  if(!aup->pPPS[PpsId].bConceal)
++  {
++    pCtx->tConceal.bHasPPS = true;
++
++    if(pCtx->tConceal.iLastPPSId <= PpsId)
++      pCtx->tConceal.iLastPPSId = PpsId;
++  }
+ 
+   return AL_OK;
+ }
+diff --git a/lib_parsing/AvcParser.c b/lib_parsing/AvcParser.c
+index 9bf2a4b..b0bbb7b 100644
+--- a/lib_parsing/AvcParser.c
++++ b/lib_parsing/AvcParser.c
+@@ -50,7 +50,7 @@ static void initPps(AL_TAvcPps* pPPS)
+   pPPS->bConceal = true;
+ }
+ 
+-AL_PARSE_RESULT AL_AVC_ParsePPS(AL_TAup* pIAup, AL_TRbspParser* pRP)
++AL_PARSE_RESULT AL_AVC_ParsePPS(AL_TAup* pIAup, AL_TRbspParser* pRP, uint16_t* pPpsId)
+ {
+   uint16_t pps_id, QpBdOffset;
+   AL_TAvcPps tempPPS;
+@@ -64,6 +64,9 @@ AL_PARSE_RESULT AL_AVC_ParsePPS(AL_TAup* pIAup, AL_TRbspParser* pRP)
+ 
+   COMPLY(pps_id < AL_AVC_MAX_PPS);
+ 
++  if(pPpsId)
++    *pPpsId = pps_id;
++
+   initPps(&tempPPS);
+ 
+   tempPPS.pic_parameter_set_id = pps_id;
+@@ -262,6 +265,7 @@ AL_PARSE_RESULT AL_AVC_ParsePPS(AL_TAup* pIAup, AL_TRbspParser* pRP)
+   COMPLY(tempPPS.num_slice_groups_minus1 == 0); // baseline profile only
+ 
+   pIAup->avcAup.pPPS[pps_id] = tempPPS;
++
+   return AL_OK;
+ }
+ 
+diff --git a/lib_parsing/AvcParser.h b/lib_parsing/AvcParser.h
+index 1952ea3..2251671 100644
+--- a/lib_parsing/AvcParser.h
++++ b/lib_parsing/AvcParser.h
+@@ -49,7 +49,7 @@
+ 
+ void AL_AVC_InitAUP(AL_TAvcAup* pAUP);
+ 
+-AL_PARSE_RESULT AL_AVC_ParsePPS(AL_TAup* pIAup, AL_TRbspParser* pRP);
++AL_PARSE_RESULT AL_AVC_ParsePPS(AL_TAup* pIAup, AL_TRbspParser* pRP, uint16_t* pPpsId);
+ AL_PARSE_RESULT AL_AVC_ParseSPS(AL_TAup* pIAup, AL_TRbspParser* pRP);
+ bool AL_AVC_ParseSEI(AL_TAup* pIAup, AL_TRbspParser* pRP, AL_CB_ParsedSei* cb);
+ 
+diff --git a/lib_parsing/HevcParser.c b/lib_parsing/HevcParser.c
+index a1ed040..0dfead5 100644
+--- a/lib_parsing/HevcParser.c
++++ b/lib_parsing/HevcParser.c
+@@ -65,13 +65,15 @@ static void initPps(AL_THevcPps* pPPS)
+   pPPS->chroma_qp_offset_list_enabled_flag = 0;
+   pPPS->log2_sao_offset_scale_chroma = 0;
+   pPPS->log2_sao_offset_scale_chroma = 0;
++
++  pPPS->bConceal = true;
+ }
+ 
+ /*****************************************************************************/
+-void AL_HEVC_ParsePPS(AL_TAup* pIAup, AL_TRbspParser* pRP, uint8_t* pPpsId)
++void AL_HEVC_ParsePPS(AL_TAup* pIAup, AL_TRbspParser* pRP, uint16_t* pPpsId)
+ {
+   AL_THevcAup* aup = &pIAup->hevcAup;
+-  uint8_t pps_id, QpBdOffset;
++  uint16_t pps_id, QpBdOffset;
+   uint16_t uLCUWidth, uLCUHeight;
+   AL_THevcPps* pPPS;
+ 
+@@ -84,10 +86,11 @@ void AL_HEVC_ParsePPS(AL_TAup* pIAup, AL_TRbspParser* pRP, uint8_t* pPpsId)
+   pps_id = ue(pRP);
+   pPPS = &aup->pPPS[pps_id];
+ 
+-  *pPpsId = pps_id;
++  if(pPpsId)
++    *pPpsId = pps_id;
++
+   // default values
+   initPps(pPPS);
+-  pPPS->bConceal = true;
+ 
+   if(pps_id >= AL_HEVC_MAX_PPS)
+     return;
+diff --git a/lib_parsing/HevcParser.h b/lib_parsing/HevcParser.h
+index 03ae818..54ee685 100644
+--- a/lib_parsing/HevcParser.h
++++ b/lib_parsing/HevcParser.h
+@@ -48,7 +48,7 @@
+ 
+ void AL_HEVC_InitAUP(AL_THevcAup* pAUP);
+ 
+-void AL_HEVC_ParsePPS(AL_TAup* pIAup, AL_TRbspParser* pRP, uint8_t* pPpsId);
++void AL_HEVC_ParsePPS(AL_TAup* pIAup, AL_TRbspParser* pRP, uint16_t* pPpsId);
+ AL_PARSE_RESULT AL_HEVC_ParseSPS(AL_TAup* pIAup, AL_TRbspParser* pRP);
+ void ParseVPS(AL_TAup* pIAup, AL_TRbspParser* pRP);
+ bool AL_HEVC_ParseSEI(AL_TAup* pIAup, AL_TRbspParser* pRP, AL_CB_ParsedSei* cb);
+diff --git a/lib_parsing/SliceHdrParsing.c b/lib_parsing/SliceHdrParsing.c
+index 84985e4..4077ade 100644
+--- a/lib_parsing/SliceHdrParsing.c
++++ b/lib_parsing/SliceHdrParsing.c
+@@ -280,15 +280,16 @@ bool AL_AVC_ParseSliceHeader(AL_TAvcSliceHdr* pSlice, AL_TRbspParser* pRP, AL_TC
+   pSlice->nal_unit_type = u(pRP, 5);
+   pSlice->first_mb_in_slice = ue(pRP);
+   pSlice->slice_type = ue(pRP);
+-  pSlice->pic_parameter_set_id = ue(pRP);
+ 
+-  int const currentPPSId = pSlice->pic_parameter_set_id;
++  int const currentPPSId = ue(pRP);
+ 
+   AL_TAvcPps const* pFallbackPps = &pPPSTable[pConceal->iLastPPSId];
+ 
+-  if(pPPSTable[currentPPSId].bConceal)
++  if(currentPPSId > AL_AVC_MAX_PPS || pPPSTable[currentPPSId].bConceal)
+     return ApplyAvcSPSAndReturn(pSlice, pFallbackPps);
+ 
++  pSlice->pic_parameter_set_id = currentPPSId;
++
+   int const MaxNumMb = (pPPSTable[currentPPSId].pSPS->pic_height_in_map_units_minus1 + 1) * (pPPSTable[currentPPSId].pSPS->pic_width_in_mbs_minus1 + 1);
+ 
+   if(pSlice->first_mb_in_slice >= MaxNumMb)
+@@ -320,22 +321,15 @@ bool AL_AVC_ParseSliceHeader(AL_TAvcSliceHdr* pSlice, AL_TRbspParser* pRP, AL_TC
+   if(pSlice->nal_unit_type == AL_AVC_NUT_VCL_IDR && pSlice->slice_type != SLICE_I)
+     return ApplyAvcSPSAndReturn(pSlice, pFallbackPps);
+ 
+-  // select the pps for the current picture
+-  pSlice->pPPS = &pPPSTable[currentPPSId];
+-
+-  if(pSlice->pPPS->bConceal)
+-    return ApplyAvcSPSAndReturn(pSlice, pFallbackPps);
+-
+-  AL_TAvcPps const* pPps = pSlice->pPPS;
+-
+-  pSlice->pSPS = pPps->pSPS;
++  // select the pps & sps for the current picture
++  AL_TAvcPps const* pPps = pSlice->pPPS = &pPPSTable[currentPPSId];
+ 
+-  if(pSlice->pSPS->bConceal)
++  if(pPps->bConceal)
+     return ApplyAvcSPSAndReturn(pSlice, pFallbackPps);
+ 
+-  AL_TAvcSps const* pSps = pSlice->pSPS;
++  AL_TAvcSps const* pSps = pSlice->pSPS = pPps->pSPS;
+ 
+-  if(pPps->bConceal || pSps->bConceal)
++  if(pSps->bConceal)
+     return ApplyAvcSPSAndReturn(pSlice, pFallbackPps);
+ 
+   // check if NAL isn't empty
+@@ -394,8 +388,8 @@ bool AL_AVC_ParseSliceHeader(AL_TAvcSliceHdr* pSlice, AL_TRbspParser* pRP, AL_TC
+     else
+     {
+       // infer values from ParserPPS
+-      pSlice->num_ref_idx_l0_active_minus1 = pSlice->pPPS->num_ref_idx_l0_active_minus1;
+-      pSlice->num_ref_idx_l1_active_minus1 = pSlice->pPPS->num_ref_idx_l1_active_minus1;
++      pSlice->num_ref_idx_l0_active_minus1 = pPps->num_ref_idx_l0_active_minus1;
++      pSlice->num_ref_idx_l1_active_minus1 = pPps->num_ref_idx_l1_active_minus1;
+     }
+   }
+ 
+@@ -444,7 +438,6 @@ bool AL_AVC_ParseSliceHeader(AL_TAvcSliceHdr* pSlice, AL_TRbspParser* pRP, AL_TC
+   if(pPps->num_slice_groups_minus1 > 0 && pPps->slice_group_map_type >= 3 && pPps->slice_group_map_type <= 5)
+     assert(0);
+   pConceal->iFirstLCU = pSlice->first_mb_in_slice;
+-  pConceal->iLastPPSId = pSlice->pic_parameter_set_id;
+   return true;
+ }
+ 
+-- 
+2.7.4
+

@@ -1,0 +1,83 @@
+From ce24714f744e998833cc6c851268e58c6534f6e6 Mon Sep 17 00:00:00 2001
+From: Pascal EYMERY <pascal.eymery@allegrodvt.com>
+Date: Wed, 5 Dec 2018 11:17:57 +0100
+Subject: [PATCH] Improve error resilience when corrupted stream has MMCO
+ and/or duplicated POC
+
+Signed-off-by: Pascal EYMERY <pascal.eymery@allegrodvt.com>
+---
+ lib_decode/AvcDecoder.c    | 2 +-
+ lib_parsing/Avc_PictMngr.c | 7 +------
+ lib_parsing/Avc_PictMngr.h | 2 +-
+ lib_parsing/DPB.c          | 6 +++---
+ 4 files changed, 6 insertions(+), 11 deletions(-)
+
+diff --git a/lib_decode/AvcDecoder.c b/lib_decode/AvcDecoder.c
+index 1d8d3ee..26d009b 100644
+--- a/lib_decode/AvcDecoder.c
++++ b/lib_decode/AvcDecoder.c
+@@ -604,7 +604,7 @@ static void decodeSliceData(AL_TAup* pIAUP, AL_TDecCtx* pCtx, AL_ENut eNUT, bool
+ 
+   // Compute Current POC
+   if(isValid && (!pSlice->first_mb_in_slice || !bSliceBelongsToSameFrame))
+-    isValid = AL_AVC_PictMngr_SetCurrentPOC(&pCtx->PictMngr, pSlice);
++    AL_AVC_PictMngr_SetCurrentPOC(&pCtx->PictMngr, pSlice);
+ 
+   // compute check gaps in frameNum
+   if(isValid)
+diff --git a/lib_parsing/Avc_PictMngr.c b/lib_parsing/Avc_PictMngr.c
+index a6fdc4d..bf0a95e 100644
+--- a/lib_parsing/Avc_PictMngr.c
++++ b/lib_parsing/Avc_PictMngr.c
+@@ -258,15 +258,10 @@ static int32_t AL_sCalculatePOC(AL_TPictMngrCtx* pCtx, AL_TAvcSliceHdr* pSlice)
+ }
+ 
+ /*****************************************************************************/
+-bool AL_AVC_PictMngr_SetCurrentPOC(AL_TPictMngrCtx* pCtx, AL_TAvcSliceHdr* pSlice)
++void AL_AVC_PictMngr_SetCurrentPOC(AL_TPictMngrCtx* pCtx, AL_TAvcSliceHdr* pSlice)
+ {
+   int32_t iCurPoc = AL_sCalculatePOC(pCtx, pSlice);
+-
+-  if(!(pSlice->slice_type == SLICE_I || AL_Dpb_SearchPOC(&pCtx->DPB, iCurPoc) == 0xFF))
+-    return false;
+-
+   pCtx->iCurFramePOC = iCurPoc;
+-  return true;
+ }
+ 
+ /*****************************************************************************/
+diff --git a/lib_parsing/Avc_PictMngr.h b/lib_parsing/Avc_PictMngr.h
+index c5dfca5..9d2e4ad 100644
+--- a/lib_parsing/Avc_PictMngr.h
++++ b/lib_parsing/Avc_PictMngr.h
+@@ -54,7 +54,7 @@
+    \param[in] pCtx   Pointer to a Picture manager context object
+    \param[in] pSlice slice header of the current decoded slice
+ *****************************************************************************/
+-bool AL_AVC_PictMngr_SetCurrentPOC(AL_TPictMngrCtx* pCtx, AL_TAvcSliceHdr* pSlice);
++void AL_AVC_PictMngr_SetCurrentPOC(AL_TPictMngrCtx* pCtx, AL_TAvcSliceHdr* pSlice);
+ 
+ /*************************************************************************//*!
+    \brief This function updates the reconstructed resolution information
+diff --git a/lib_parsing/DPB.c b/lib_parsing/DPB.c
+index 3380cc5..f3bf25d 100644
+--- a/lib_parsing/DPB.c
++++ b/lib_parsing/DPB.c
+@@ -1395,11 +1395,11 @@ void AL_Dpb_MarkingProcess(AL_TDpb* pDpb, AL_TAvcSliceHdr* pSlice)
+   {
+     AL_Dpb_PictNumberProcess(pDpb, pSlice);
+ 
+-    if(!pSlice->adaptive_ref_pic_marking_mode_flag)
+-      AL_Dpb_sSlidingWindowMarking(pDpb, pSlice);
+-    else
++    if(pSlice->adaptive_ref_pic_marking_mode_flag)
+       AL_Dpb_sAdaptiveMemoryControlMarking(pDpb, pSlice);
+ 
++    AL_Dpb_sSlidingWindowMarking(pDpb, pSlice);
++
+     for(int op_idc = 0; op_idc < 32; ++op_idc)
+     {
+       if(pSlice->memory_management_control_operation[op_idc] == 6 &&
+-- 
+2.7.4
+

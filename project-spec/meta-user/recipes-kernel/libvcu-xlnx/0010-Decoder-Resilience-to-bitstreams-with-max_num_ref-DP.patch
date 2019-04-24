@@ -1,0 +1,40 @@
+From 1be39e4a5fe81c08517225dc13f91903db65784c Mon Sep 17 00:00:00 2001
+From: Sylvain Vigier <sylvain.vigier@allegrodvt.com>
+Date: Fri, 1 Feb 2019 15:07:42 +0100
+Subject: [PATCH 2/2] [Decoder] Resilience to bitstreams with max_num_ref > DPB
+ size allowed by profile (#1756)
+
+---
+ lib_decode/AvcDecoder.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/lib_decode/AvcDecoder.c b/lib_decode/AvcDecoder.c
+index 29cdb03..5a1a288 100644
+--- a/lib_decode/AvcDecoder.c
++++ b/lib_decode/AvcDecoder.c
+@@ -174,6 +174,13 @@ static bool isSPSCompatibleWithStreamSettings(AL_TAvcSps const* pSPS, AL_TStream
+   return true;
+ }
+ 
++/******************************************************************************/
++static int getConcealedMaxDPBSize(int iLevel, int iWidth, int iHeight, int iSPSMaxRefFrames)
++{
++  int iDpbMaxBuf = AL_AVC_GetMaxDPBSize(iLevel, iWidth, iHeight);
++  return Max(iDpbMaxBuf, iSPSMaxRefFrames);
++}
++
+ int AVC_GetMinOutputBuffersNeeded(int iDpbMaxBuf, int iStack);
+ /******************************************************************************/
+ static bool allocateBuffers(AL_TDecCtx* pCtx, AL_TAvcSps const* pSPS)
+@@ -193,7 +200,7 @@ static bool allocateBuffers(AL_TDecCtx* pCtx, AL_TAvcSps const* pSPS)
+   if(!AL_Default_Decoder_AllocPool(pCtx, iSizeWP, iSizeSP, iSizeCompData, iSizeCompMap))
+     goto fail_alloc;
+ 
+-  const int iDpbMaxBuf = AL_AVC_GetMaxDPBSize(iSPSLevel, tSPSDim.iWidth, tSPSDim.iHeight);
++  const int iDpbMaxBuf = getConcealedMaxDPBSize(iSPSLevel, tSPSDim.iWidth, tSPSDim.iHeight, pSPS->max_num_ref_frames);
+ 
+   const int iMaxBuf = AVC_GetMinOutputBuffersNeeded(iDpbMaxBuf, pCtx->iStackSize);
+ 
+-- 
+2.7.4
+

@@ -1,0 +1,44 @@
+From 1aa318aee9c7bdb8a47fb0f2c5831f9114c1aa77 Mon Sep 17 00:00:00 2001
+From: Pascal EYMERY <pascal.eymery@allegrodvt.com>
+Date: Thu, 29 Nov 2018 18:10:29 +0100
+Subject: [PATCH] Do not use floating point arithmetic for dynamic lambda
+ computation to improve MCU performances.
+
+Signed-off-by: Pascal EYMERY <pascal.eymery@allegrodvt.com>
+---
+ exe_encoder/CfgParser.cpp             | 1 -
+ include/lib_common_enc/EncChanParam.h | 6 +++---
+ 2 files changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/exe_encoder/CfgParser.cpp b/exe_encoder/CfgParser.cpp
+index 8702ef5..0447a02 100644
+--- a/exe_encoder/CfgParser.cpp
++++ b/exe_encoder/CfgParser.cpp
+@@ -358,7 +358,6 @@ static void populateSettingsSection(ConfigParser& parser, ConfigFile& cfg, Tempo
+   ldamodes["DEFAULT_LDA"] = DEFAULT_LDA;
+   ldamodes["CUSTOM_LDA"] = CUSTOM_LDA;
+   ldamodes["AUTO_LDA"] = AUTO_LDA;
+-  ldamodes["TEST_LDA"] = TEST_LDA;
+   ldamodes["DYNAMIC_LDA"] = DYNAMIC_LDA;
+   ldamodes["LOAD_LDA"] = LOAD_LDA;
+   parser.addEnum(curSection, "LambdaCtrlMode", cfg.Settings.tChParam[0].eLdaCtrlMode, ldamodes, "Specifies the lambda values used for rate-distortion optimization");
+diff --git a/include/lib_common_enc/EncChanParam.h b/include/lib_common_enc/EncChanParam.h
+index f62ec42..f91fc53 100644
+--- a/include/lib_common_enc/EncChanParam.h
++++ b/include/lib_common_enc/EncChanParam.h
+@@ -64,9 +64,9 @@ typedef enum e_LdaCtrlMode
+ {
+   DEFAULT_LDA = 0x00, /*!< default behaviour */
+   CUSTOM_LDA = 0x01, /*!< used for test purpose */
+-  AUTO_LDA = 0x02, /*!< used for test purpose */
+-  TEST_LDA = 0x03, /*!< used for test purpose */
+-  DYNAMIC_LDA = 0x04, /*!< used for test purpose */
++  DYNAMIC_LDA = 0x02, /*!< select lambda values according to the GOP pattern */
++  AUTO_LDA = 0x03, /*!< automatically select betxeen DEFAULT_LDA and DYNAMIC_LDA */
++
+   LOAD_LDA = 0x80, /*!< used for test purpose */
+ }AL_ELdaCtrlMode;
+ 
+-- 
+2.7.4
+

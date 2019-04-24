@@ -1,0 +1,79 @@
+From 1fecc936cb0d9587c0a3b21ae000d11ed1e14d0d Mon Sep 17 00:00:00 2001
+From: Sylvain Vigier <sylvain.vigier@allegrodvt.com>
+Date: Thu, 7 Feb 2019 09:29:55 +0100
+Subject: [PATCH] [Decoder] Conceal slice with invalid reordering in headers
+ (when missing the end reordering flag) #1796
+
+---
+ lib_parsing/SliceHdrParsing.c | 18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/lib_parsing/SliceHdrParsing.c b/lib_parsing/SliceHdrParsing.c
+index 4077ade..5ea08f9 100644
+--- a/lib_parsing/SliceHdrParsing.c
++++ b/lib_parsing/SliceHdrParsing.c
+@@ -122,8 +122,9 @@ static void AL_AVC_spred_weight_table(AL_TRbspParser* pRP, AL_TAvcSliceHdr* pSli
+    \param[in]  pRP             Pointer to NAL buffer
+    \param[out] pSlice          Pointer to the slice header structure that will be filled
+    \param[in]  NumPocTotalCurr Number of pictures available as reference for the current picture
++   \return return true if no error was detected in reordering syntax
+ *****************************************************************************/
+-static void AL_AVC_sref_pic_list_reordering(AL_TRbspParser* pRP, AL_TAvcSliceHdr* pSlice)
++static bool AL_AVC_sref_pic_list_reordering(AL_TRbspParser* pRP, AL_TAvcSliceHdr* pSlice)
+ {
+   if(pSlice->slice_type != SLICE_I)
+   {
+@@ -134,6 +135,7 @@ static void AL_AVC_sref_pic_list_reordering(AL_TRbspParser* pRP, AL_TAvcSliceHdr
+     pSlice->ref_pic_list_reordering_flag_l0 = u(pRP, 1);
+ 
+     if(pSlice->ref_pic_list_reordering_flag_l0)
++    {
+       do
+       {
+         ++idx1;
+@@ -152,6 +154,10 @@ static void AL_AVC_sref_pic_list_reordering(AL_TRbspParser* pRP, AL_TAvcSliceHdr
+         }
+       }
+       while(idx1 < AL_MAX_REFERENCE_PICTURE_REORDER && pSlice->reordering_of_pic_nums_idc_l0[idx1] != 3);
++
++      if(pSlice->reordering_of_pic_nums_idc_l0[idx1] != 3)
++        return false;
++    }
+   }
+ 
+   if(pSlice->slice_type == SLICE_B)
+@@ -163,6 +169,7 @@ static void AL_AVC_sref_pic_list_reordering(AL_TRbspParser* pRP, AL_TAvcSliceHdr
+     pSlice->ref_pic_list_reordering_flag_l1 = u(pRP, 1);
+ 
+     if(pSlice->ref_pic_list_reordering_flag_l1)
++    {
+       do
+       {
+         ++idx1;
+@@ -181,7 +188,13 @@ static void AL_AVC_sref_pic_list_reordering(AL_TRbspParser* pRP, AL_TAvcSliceHdr
+         }
+       }
+       while(idx1 < AL_MAX_REFERENCE_PICTURE_REORDER && pSlice->reordering_of_pic_nums_idc_l1[idx1] != 3);
++
++      if(pSlice->reordering_of_pic_nums_idc_l1[idx1] != 3)
++        return false;
++    }
+   }
++
++  return true;
+ }
+ 
+ /*****************************************************************************/
+@@ -397,7 +410,8 @@ bool AL_AVC_ParseSliceHeader(AL_TAvcSliceHdr* pSlice, AL_TRbspParser* pRP, AL_TC
+   if(!more_rbsp_data(pRP))
+     return ApplyAvcSPSAndReturn(pSlice, pFallbackPps);
+ 
+-  AL_AVC_sref_pic_list_reordering(pRP, pSlice);
++  if(!AL_AVC_sref_pic_list_reordering(pRP, pSlice))
++    return false;
+ 
+   if(
+     (pPps->weighted_pred_flag && pSlice->slice_type == SLICE_P) ||
+-- 
+2.7.4
+

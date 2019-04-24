@@ -1,0 +1,31 @@
+From ba5d9b38c6093f9fc0d2bd7d73223b6d3f484567 Mon Sep 17 00:00:00 2001
+From: Arthur Vinchon <arthur.vinchon@allegrodvt.com>
+Date: Wed, 6 Mar 2019 10:35:18 +0100
+Subject: [PATCH] backport lowref fix
+
+Signed-off-by: Arthur Vinchon <arthur.vinchon@allegrodvt.com>
+---
+ base/omx_mediatype/omx_mediatype_dec_common.cpp | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/base/omx_mediatype/omx_mediatype_dec_common.cpp b/base/omx_mediatype/omx_mediatype_dec_common.cpp
+index 31b01c8..9a2768a 100644
+--- a/base/omx_mediatype/omx_mediatype_dec_common.cpp
++++ b/base/omx_mediatype/omx_mediatype_dec_common.cpp
+@@ -144,9 +144,11 @@ DecodedPictureBufferType CreateDecodedPictureBuffer(AL_TDecSettings settings)
+   return ConvertSoftToModuleDecodedPictureBuffer(settings.eDpbMode);
+ }
+ 
+-bool UpdateIsEnabledSubFrame(AL_TDecSettings& settings, bool isEnabledSubFrame)
++bool UpdateIsEnabledSubFrame(AL_TDecSettings& settings, bool isEnabledSubframe)
+ {
+-  settings.eDecUnit = isEnabledSubFrame ? ConvertModuleToSoftDecodeUnit(DecodeUnitType::DECODE_UNIT_SLICE) : ConvertModuleToSoftDecodeUnit(DecodeUnitType::DECODE_UNIT_FRAME);
++  settings.bLowLat = isEnabledSubframe;
++  settings.eDecUnit = isEnabledSubframe ? ConvertModuleToSoftDecodeUnit(DecodeUnitType::DECODE_UNIT_SLICE) : ConvertModuleToSoftDecodeUnit(DecodeUnitType::DECODE_UNIT_FRAME);
++  settings.eDpbMode = isEnabledSubframe ? ConvertModuleToSoftDecodedPictureBuffer(DecodedPictureBufferType::DECODED_PICTURE_BUFFER_LOW_REFERENCE) : ConvertModuleToSoftDecodedPictureBuffer(DecodedPictureBufferType::DECODED_PICTURE_BUFFER_NORMAL);
+   return true;
+ }
+ 
+-- 
+2.7.4
+

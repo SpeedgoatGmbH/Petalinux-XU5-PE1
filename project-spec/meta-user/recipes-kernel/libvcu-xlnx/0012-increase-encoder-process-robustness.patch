@@ -1,0 +1,54 @@
+From e85d9754b165527a98b3928b37725df13eb7fdd1 Mon Sep 17 00:00:00 2001
+From: Arthur Vinchon <arthur.vinchon@allegrodvt.com>
+Date: Thu, 14 Mar 2019 11:57:55 +0100
+Subject: [PATCH] increase encoder process robustness
+
+Signed-off-by: Arthur Vinchon <arthur.vinchon@allegrodvt.com>
+---
+ lib_encode/Com_Encoder.c   | 8 ++++++++
+ lib_encode/IP_EncoderCtx.h | 1 +
+ 2 files changed, 9 insertions(+)
+
+diff --git a/lib_encode/Com_Encoder.c b/lib_encode/Com_Encoder.c
+index 9d946cc..4ec3b50 100644
+--- a/lib_encode/Com_Encoder.c
++++ b/lib_encode/Com_Encoder.c
+@@ -132,6 +132,8 @@ static bool init(AL_TEncCtx* pCtx, AL_TEncChanParam* pChParam, AL_TAllocator* pA
+ 
+   AL_SrcBuffersChecker_Init(&pCtx->tLayerCtx[0].srcBufferChecker, pChParam);
+ 
++  for(int iLayerID =0; iLayerID < MAX_NUM_LAYER; iLayerID++)
++    pCtx->bEndOfStreamReceived[iLayerID] = false;
+ 
+   pCtx->iLastIdrId = 0;
+ 
+@@ -333,8 +335,14 @@ bool AL_Common_Encoder_Process(AL_TEncoder* pEnc, AL_TBuffer* pFrame, AL_TBuffer
+ {
+   AL_TEncCtx* pCtx = pEnc->pCtx;
+ 
++  if(pCtx->bEndOfStreamReceived[iLayerID])
++    return false;
++
+   if(!pFrame)
++  {
++    pCtx->bEndOfStreamReceived[iLayerID] = true;
+     return EndOfStream(pEnc, iLayerID);
++  }
+ 
+   if(!AL_SrcBuffersChecker_CanBeUsed(&pCtx->tLayerCtx[iLayerID].srcBufferChecker, pFrame))
+     return false;
+diff --git a/lib_encode/IP_EncoderCtx.h b/lib_encode/IP_EncoderCtx.h
+index 44e94b8..c8a1d7e 100644
+--- a/lib_encode/IP_EncoderCtx.h
++++ b/lib_encode/IP_EncoderCtx.h
+@@ -131,6 +131,7 @@ typedef struct AL_t_EncCtx
+ 
+   TStreamInfo StreamInfo;
+ 
++  bool bEndOfStreamReceived[MAX_NUM_LAYER];
+   int iLastIdrId;
+ 
+   AL_SeiData seiData;
+-- 
+2.7.4
+

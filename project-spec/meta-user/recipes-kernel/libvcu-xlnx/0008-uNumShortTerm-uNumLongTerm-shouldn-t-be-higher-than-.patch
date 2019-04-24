@@ -1,0 +1,27 @@
+From d73d4ba169f1600c32a242d859cd71b034656500 Mon Sep 17 00:00:00 2001
+From: Arthur Vinchon <arthur.vinchon@allegrodvt.com>
+Date: Wed, 26 Dec 2018 15:28:28 +0100
+Subject: [PATCH] uNumShortTerm + uNumLongTerm shouldn't be higher than
+ Min(pDpb->uNumRef, pSPS->max_num_ref_frames)
+
+Signed-off-by: Arthur Vinchon <arthur.vinchon@allegrodvt.com>
+---
+ lib_parsing/DPB.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lib_parsing/DPB.c b/lib_parsing/DPB.c
+index e3200fd..ad96991 100644
+--- a/lib_parsing/DPB.c
++++ b/lib_parsing/DPB.c
+@@ -197,7 +197,7 @@ static void AL_Dpb_sSlidingWindowMarking(AL_TDpb* pDpb, AL_TAvcSliceHdr* pSlice)
+     uPic = pNodes[uPic].uNextDecOrder;
+   }
+ 
+-  if((uNumShortTerm + uNumLongTerm) > pSlice->pSPS->max_num_ref_frames)
++  if((uNumShortTerm + uNumLongTerm) > UnsignedMin(pDpb->uNumRef, pSlice->pSPS->max_num_ref_frames))
+   {
+     pNodes[uPosMin].eMarking_flag = UNUSED_FOR_REF;
+     --pDpb->uCountRef;
+-- 
+2.19.2
+

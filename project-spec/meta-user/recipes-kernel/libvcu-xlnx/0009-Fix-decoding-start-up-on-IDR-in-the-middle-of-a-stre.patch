@@ -1,0 +1,54 @@
+From c0ee6a949d2ddee1652b9b908266272c1ad1f666 Mon Sep 17 00:00:00 2001
+From: Pascal EYMERY <pascal.eymery@allegrodvt.com>
+Date: Mon, 14 Jan 2019 16:04:39 +0100
+Subject: [PATCH 1/2] Fix decoding start-up on IDR in the middle of a stream
+
+Signed-off-by: Pascal EYMERY <pascal.eymery@allegrodvt.com>
+---
+ lib_decode/AvcDecoder.c       | 3 +++
+ lib_decode/HevcDecoder.c      | 1 +
+ lib_decode/SliceDataParsing.c | 1 +
+ 3 files changed, 5 insertions(+)
+
+diff --git a/lib_decode/AvcDecoder.c b/lib_decode/AvcDecoder.c
+index 26d009b..29cdb03 100644
+--- a/lib_decode/AvcDecoder.c
++++ b/lib_decode/AvcDecoder.c
+@@ -562,7 +562,10 @@ static void decodeSliceData(AL_TAup* pIAUP, AL_TDecCtx* pCtx, AL_ENut eNUT, bool
+     pCtx->uCurPocLsb = pSlice->pic_order_cnt_lsb;
+ 
+     if(!initSlice(pCtx, pSlice))
++    {
++      UpdateContextAtEndOfFrame(pCtx);
+       return;
++    }
+   }
+ 
+   pCtx->uCurID = (pCtx->uCurID + 1) & 1;
+diff --git a/lib_decode/HevcDecoder.c b/lib_decode/HevcDecoder.c
+index a184480..c4ad482 100644
+--- a/lib_decode/HevcDecoder.c
++++ b/lib_decode/HevcDecoder.c
+@@ -677,6 +677,7 @@ static void decodeSliceData(AL_TAup* pIAUP, AL_TDecCtx* pCtx, AL_ENut eNUT, bool
+     if(!*bFirstIsValid)
+     {
+       pCtx->bIsFirstPicture = false;
++      UpdateContextAtEndOfFrame(pCtx);
+       return;
+     }
+     AL_HEVC_PictMngr_RemoveHeadFrame(&pCtx->PictMngr);
+diff --git a/lib_decode/SliceDataParsing.c b/lib_decode/SliceDataParsing.c
+index b2e8622..b2cac78 100644
+--- a/lib_decode/SliceDataParsing.c
++++ b/lib_decode/SliceDataParsing.c
+@@ -280,6 +280,7 @@ void AL_CancelFrameBuffers(AL_TDecCtx* pCtx)
+ 
+   int iOffset = pCtx->iNumFrmBlk1 % MAX_STACK_SIZE;
+   AL_PictMngr_UnlockRefID(&pCtx->PictMngr, pCtx->uNumRef[iOffset], pCtx->uFrameIDRefList[iOffset], pCtx->uMvIDRefList[iOffset]);
++  UpdateContextAtEndOfFrame(pCtx);
+   Rtos_ReleaseSemaphore(pCtx->Sem);
+ }
+ 
+-- 
+2.7.4
+
