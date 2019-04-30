@@ -4378,6 +4378,7 @@ CONFIG_imagefeature-hwcodecs=y
 #
 # apps 
 #
+CONFIG_fpgautil=y
 # CONFIG_gpio-demo is not set
 # CONFIG_peekpoke is not set
 
@@ -4385,6 +4386,7 @@ CONFIG_imagefeature-hwcodecs=y
 # user packages 
 #
 CONFIG_aravis=y
+CONFIG_mw-fs-overlay=y
 
 #
 # PetaLinux RootFS Settings

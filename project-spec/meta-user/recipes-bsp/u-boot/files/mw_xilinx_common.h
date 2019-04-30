@@ -22,7 +22,7 @@
 #endif
 
 #if defined(CONFIG_ENV_IS_IN_FAT) || defined(CONFIG_ZYNQMP_INIT_ENV)
-# define ENV_CMD_INIT_ENV_ONCE \
+#define ENV_CMD_INIT_ENV_ONCE \
 	"uenv_init=" \
 		"echo Storing default uboot environment...;" \
 		"env set uenv_init true;" \

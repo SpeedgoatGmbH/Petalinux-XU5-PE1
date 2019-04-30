@@ -3,3 +3,5 @@
 IMAGE_INSTALL_append = " peekpoke"
 IMAGE_INSTALL_append = " gpio-demo"
 IMAGE_INSTALL_append = " aravis"
+IMAGE_INSTALL_append = " mw-fs-overlay"
+IMAGE_INSTALL_append = " fpgautil"

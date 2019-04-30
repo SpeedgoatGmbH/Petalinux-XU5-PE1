@@ -1,0 +1,13 @@
+# interface configuration
+auto lo eth0
+iface lo inet loopback
+# eth0: Static configuration
+iface eth0 inet dhcp
+
+# eth0: Dynamic configuration
+iface eth1 inet dhcp
+
+# usb0: Static configuration
+#iface usb0 inet static
+#address 10.10.10.1
+#netmask 255.255.255.0

@@ -166,7 +166,7 @@
 	"importbootenv=echo \"Importing environment from SD ...\"; " \ 
 		"env import -t ${loadbootenv_addr} $filesize\0" \ 
 	"loadbootenv=load mmc $sdbootdev:$partid ${loadbootenv_addr} ${bootenv}\0" \ 
-	"sd_uEnvtxt_existence_test=test -e mmc $sdbootdev:$partid /uEnv.txt\0" \ 
+	"sd_uEnvtxt_existence_test=test -e mmc $sdbootdev:$partid /$bootenv\0" \ 
 	"uenvboot=" \
 		"if run sd_uEnvtxt_existence_test; then " \
 			"run loadbootenv; " \
